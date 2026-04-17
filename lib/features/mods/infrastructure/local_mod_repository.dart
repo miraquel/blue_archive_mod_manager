@@ -57,6 +57,11 @@ class LocalModRepository implements ModRepository {
     await _persist(mods);
   }
 
+  @override
+  Future<void> replaceAllMods(List<ModEntry> mods) async {
+    await _persist(mods);
+  }
+
   Future<void> _persist(List<ModEntry> mods) async {
     final jsonString = json.encode(mods.map((m) => m.toJson()).toList());
     await _prefs.setString(_modsKey, jsonString);

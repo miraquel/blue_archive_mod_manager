@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import 'package:bamm/features/catalog/application/providers.dart';
+import 'package:bamm/features/settings/application/providers.dart';
+import 'package:bamm/features/settings/application/validator_index_controller.dart';
 import 'package:bamm/features/shizuku/application/providers.dart';
 import 'package:bamm/features/shizuku/application/shizuku_state.dart';
 
@@ -12,7 +15,36 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final shizukuState = ref.watch(shizukuControllerProvider);
     final mappingAsync = ref.watch(mappingControllerProvider);
+    final validatorIndexAsync = ref.watch(validatorIndexControllerProvider);
     final colorScheme = Theme.of(context).colorScheme;
+
+    ref.listen<AsyncValue<ValidatorIndexState>>(
+      validatorIndexControllerProvider,
+      (previous, next) {
+        final previousState = previous?.valueOrNull;
+        final nextState = next.valueOrNull;
+        if (previousState == null || nextState == null) {
+          return;
+        }
+
+        if (previousState.isRebuilding &&
+            !nextState.isRebuilding &&
+            nextState.error == null &&
+            nextState.statusMessage != null) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(nextState.statusMessage!)));
+        }
+
+        if (nextState.error != null && previousState.error != nextState.error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Validator rebuild failed: ${nextState.error}'),
+            ),
+          );
+        }
+      },
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -54,8 +86,8 @@ class SettingsScreen extends ConsumerWidget {
                     onPressed: shizukuState.isLoading
                         ? null
                         : () => ref
-                            .read(shizukuControllerProvider.notifier)
-                            .initialize(),
+                              .read(shizukuControllerProvider.notifier)
+                              .initialize(),
                     child: const Text('Connect'),
                   ),
                 if (shizukuState.isReady)
@@ -63,8 +95,8 @@ class SettingsScreen extends ConsumerWidget {
                     onPressed: shizukuState.isLoading
                         ? null
                         : () => ref
-                            .read(shizukuControllerProvider.notifier)
-                            .unbindService(),
+                              .read(shizukuControllerProvider.notifier)
+                              .unbindService(),
                     child: const Text('Disconnect'),
                   ),
               ],
@@ -109,13 +141,14 @@ class SettingsScreen extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
                       mappingState.error!,
-                      style:
-                          TextStyle(color: colorScheme.error, fontSize: 12),
+                      style: TextStyle(color: colorScheme.error, fontSize: 12),
                     ),
                   ),
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: Wrap(
                     spacing: 8,
                     children: [
@@ -123,8 +156,8 @@ class SettingsScreen extends ConsumerWidget {
                         onPressed: mappingState.isImporting
                             ? null
                             : () => ref
-                                .read(mappingControllerProvider.notifier)
-                                .importMappingFile(),
+                                  .read(mappingControllerProvider.notifier)
+                                  .importMappingFile(),
                         icon: const Icon(Icons.file_open, size: 18),
                         label: const Text('Import Mapping.json'),
                       ),
@@ -133,8 +166,8 @@ class SettingsScreen extends ConsumerWidget {
                           onPressed: mappingState.isImporting
                               ? null
                               : () => ref
-                                  .read(mappingControllerProvider.notifier)
-                                  .clearMappings(),
+                                    .read(mappingControllerProvider.notifier)
+                                    .clearMappings(),
                           icon: const Icon(Icons.clear, size: 18),
                           label: const Text('Clear'),
                         ),
@@ -143,6 +176,120 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ],
             ),
+          ),
+          const Divider(),
+
+          // --- Compatibility Validator Section ---
+          _SectionHeader(
+            title: 'Compatibility Validator',
+            colorScheme: colorScheme,
+          ),
+          validatorIndexAsync.when(
+            loading: () => const ListTile(
+              leading: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              title: Text('Loading validator index...'),
+            ),
+            error: (error, _) => ListTile(
+              leading: Icon(Icons.error_outline, color: colorScheme.error),
+              title: const Text('Failed to load validator index'),
+              subtitle: Text(error.toString()),
+            ),
+            data: (validatorState) {
+              final snapshot = validatorState.snapshot;
+              final builtAt = snapshot?.builtAt;
+              final subtitleLines = <String>[
+                if (snapshot != null)
+                  'Source: ${snapshot.sourceLabel} • ${snapshot.fileCount} files',
+                if (snapshot?.sourcePath case final sourcePath?)
+                  'Path: $sourcePath',
+                if (builtAt != null)
+                  'Built: ${DateFormat.yMMMd().add_jm().format(builtAt.toLocal())}',
+                if (snapshot == null) 'No validator index loaded',
+              ];
+
+              return Column(
+                children: [
+                  ListTile(
+                    leading: Icon(
+                      snapshot?.isBundled ?? true
+                          ? Icons.inventory_2_outlined
+                          : Icons.storage,
+                    ),
+                    title: const Text('Active validator index'),
+                    subtitle: Text(subtitleLines.join('\n')),
+                    isThreeLine: subtitleLines.length >= 2,
+                  ),
+                  if (validatorState.isRebuilding)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: LinearProgressIndicator(),
+                    ),
+                  if (validatorState.statusMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          validatorState.statusMessage!,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ),
+                  if (validatorState.error != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        validatorState.error!,
+                        style: TextStyle(
+                          color: colorScheme.error,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        FilledButton.tonalIcon(
+                          onPressed:
+                              validatorState.isRebuilding ||
+                                  !shizukuState.isReady
+                              ? null
+                              : () => ref
+                                    .read(
+                                      validatorIndexControllerProvider.notifier,
+                                    )
+                                    .rebuildIndex(),
+                          icon: const Icon(Icons.refresh, size: 18),
+                          label: const Text('Rebuild validator index'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!shizukuState.isReady)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Connect Shizuku to rebuild the index from the installed Global Android game data.',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
           const Divider(),
 
@@ -188,9 +335,9 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Text(
         title,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: colorScheme.primary,
-            ),
+        style: Theme.of(
+          context,
+        ).textTheme.titleSmall?.copyWith(color: colorScheme.primary),
       ),
     );
   }

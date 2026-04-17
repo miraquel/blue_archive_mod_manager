@@ -12,6 +12,5 @@ class ModTarget {
   });
 
   @override
-  String toString() =>
-      'ModTarget(fileName: $fileName, hasBackup: $hasBackup)';
+  String toString() => 'ModTarget(fileName: $fileName, hasBackup: $hasBackup)';
 }

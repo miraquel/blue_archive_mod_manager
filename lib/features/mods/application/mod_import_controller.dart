@@ -49,7 +49,7 @@ class ModImportController extends Notifier<ModImportState> {
     state = const ModImportState(isImporting: true);
 
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         allowMultiple: true,
         type: FileType.any,
       );
@@ -61,6 +61,15 @@ class ModImportController extends Notifier<ModImportState> {
 
       final repo = ref.read(modRepositoryProvider);
       final stagingStore = ref.read(modStagingStoreProvider);
+      final studentProfiles = await ref
+          .read(studentIndexRepositoryProvider)
+          .getProfiles();
+      final studentMatcher = ref.read(modStudentMatcherProvider);
+      final assetMetadataParser = ref.read(modAssetMetadataParserProvider);
+      final assetIndex = await ref.read(globalAndroidAssetIndexProvider.future);
+      final compatibilityValidator = ref.read(
+        modCompatibilityValidatorProvider,
+      );
       final totalFiles = result.files.length;
 
       for (var i = 0; i < totalFiles; i++) {
@@ -83,6 +92,19 @@ class ModImportController extends Notifier<ModImportState> {
 
         final fileSize = await File(file.path!).length();
         final displayName = p.basenameWithoutExtension(fileName);
+        final matchedStudent = studentMatcher.matchFileName(
+          fileName,
+          studentProfiles,
+        );
+        final assetMetadata = assetMetadataParser.parse(
+          fileName,
+          hasStudentMatch: matchedStudent != null,
+        );
+        final compatibility = compatibilityValidator.validate(
+          fileName: fileName,
+          assetMetadata: assetMetadata,
+          assetIndex: assetIndex,
+        );
 
         final modEntry = ModEntry(
           id: modId,
@@ -91,6 +113,17 @@ class ModImportController extends Notifier<ModImportState> {
           storagePath: storagePath,
           importedAt: DateTime.now(),
           sizeBytes: fileSize,
+          studentId: matchedStudent?.id,
+          studentDevName: matchedStudent?.devName,
+          studentName: matchedStudent?.displayName,
+          assetCategory: assetMetadata.category,
+          assetFamily: assetMetadata.family,
+          assetVariant: assetMetadata.variant,
+          chunkGroupId: assetMetadata.chunkGroupId,
+          chunkIndex: assetMetadata.chunkIndex,
+          assetDate: assetMetadata.assetDate,
+          compatibilityStatus: compatibility.status,
+          compatibilityReason: compatibility.reason,
         );
 
         await repo.saveMod(modEntry);

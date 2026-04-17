@@ -37,6 +37,20 @@ class ModApplyState {
   }
 }
 
+class ModBatchActionResult {
+  final int attemptedCount;
+  final int successCount;
+  final List<String> failedMods;
+
+  const ModBatchActionResult({
+    required this.attemptedCount,
+    required this.successCount,
+    this.failedMods = const [],
+  });
+
+  int get failureCount => failedMods.length;
+}
+
 class ModApplyController extends Notifier<ModApplyState> {
   @override
   ModApplyState build() => const ModApplyState();
@@ -50,21 +64,23 @@ class ModApplyController extends Notifier<ModApplyState> {
   /// 4. Use CRC patcher to match original CRC
   /// 5. Write patched file to game directory via Shizuku
   Future<ModApplyResult> applyMod(ModEntry mod) async {
+    final targetFile = mod.targetFile.trim();
+
     if (state.isApplying) {
       return ModApplyResult(
         success: false,
         modId: mod.id,
-        targetFile: mod.targetFile ?? '',
+        targetFile: targetFile,
         errorMessage: 'Another mod is currently being applied',
       );
     }
 
-    if (mod.targetFile == null) {
+    if (targetFile.isEmpty) {
       return ModApplyResult(
         success: false,
         modId: mod.id,
         targetFile: '',
-        errorMessage: 'No target file set for this mod',
+        errorMessage: 'No target file could be inferred for this mod',
       );
     }
 
@@ -85,7 +101,7 @@ class ModApplyController extends Notifier<ModApplyState> {
 
       // TODO: Read original game file via Shizuku bridge
       // final shizuku = ref.read(shizukuBridgeProvider);
-      // final originalData = await shizuku.readGameFile(mod.targetFile!);
+      // final originalData = await shizuku.readGameFile(targetFile);
       state = state.copyWith(statusMessage: 'Reading original game file...');
       AppLogger.warning(
         'Shizuku bridge not yet integrated — skipping original file read',
@@ -108,7 +124,7 @@ class ModApplyController extends Notifier<ModApplyState> {
       // }
 
       // TODO: Write patched file to game directory via Shizuku
-      // await shizuku.writeGameFile(mod.targetFile!, finalData);
+      // await shizuku.writeGameFile(targetFile, finalData);
       state = state.copyWith(statusMessage: 'Writing to game directory...');
       AppLogger.warning(
         'Shizuku bridge not yet integrated — skipping game file write',
@@ -124,14 +140,14 @@ class ModApplyController extends Notifier<ModApplyState> {
       state = const ModApplyState();
 
       AppLogger.info(
-        'Applied mod: ${mod.name} -> ${mod.targetFile}',
+        'Applied mod: ${mod.name} -> $targetFile',
         tag: 'ModApply',
       );
 
       return ModApplyResult(
         success: true,
         modId: mod.id,
-        targetFile: mod.targetFile!,
+        targetFile: targetFile,
         crcPatched: crcPatched,
       );
     } catch (e, st) {
@@ -147,7 +163,7 @@ class ModApplyController extends Notifier<ModApplyState> {
       return ModApplyResult(
         success: false,
         modId: mod.id,
-        targetFile: mod.targetFile ?? '',
+        targetFile: targetFile,
         errorMessage: e.toString(),
       );
     }
@@ -193,6 +209,68 @@ class ModApplyController extends Notifier<ModApplyState> {
       state = ModApplyState(error: e.toString());
       return false;
     }
+  }
+
+  Future<ModBatchActionResult> applyAllMods(List<ModEntry> mods) async {
+    if (state.isApplying) {
+      return const ModBatchActionResult(attemptedCount: 0, successCount: 0);
+    }
+
+    final pendingMods = mods
+        .where((mod) => !mod.isApplied)
+        .toList(growable: false);
+    if (pendingMods.isEmpty) {
+      return const ModBatchActionResult(attemptedCount: 0, successCount: 0);
+    }
+
+    var successCount = 0;
+    final failedMods = <String>[];
+
+    for (final mod in pendingMods) {
+      final result = await applyMod(mod);
+      if (result.success) {
+        successCount++;
+      } else {
+        failedMods.add(mod.name);
+      }
+    }
+
+    return ModBatchActionResult(
+      attemptedCount: pendingMods.length,
+      successCount: successCount,
+      failedMods: failedMods,
+    );
+  }
+
+  Future<ModBatchActionResult> restoreAllMods(List<ModEntry> mods) async {
+    if (state.isApplying) {
+      return const ModBatchActionResult(attemptedCount: 0, successCount: 0);
+    }
+
+    final appliedMods = mods
+        .where((mod) => mod.isApplied)
+        .toList(growable: false);
+    if (appliedMods.isEmpty) {
+      return const ModBatchActionResult(attemptedCount: 0, successCount: 0);
+    }
+
+    var successCount = 0;
+    final failedMods = <String>[];
+
+    for (final mod in appliedMods) {
+      final success = await restoreMod(mod);
+      if (success) {
+        successCount++;
+      } else {
+        failedMods.add(mod.name);
+      }
+    }
+
+    return ModBatchActionResult(
+      attemptedCount: appliedMods.length,
+      successCount: successCount,
+      failedMods: failedMods,
+    );
   }
 
   void clearError() {

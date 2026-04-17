@@ -51,10 +51,7 @@ void main() {
     });
 
     test('both empty needs no correction', () {
-      final result = CrcPatcher.manipulateCrc(
-        originalData: [],
-        modData: [],
-      );
+      final result = CrcPatcher.manipulateCrc(originalData: [], modData: []);
       expect(result.success, isTrue);
       expect(result.patchedData, isEmpty);
     });
@@ -179,8 +176,11 @@ void main() {
           originalData: original,
           modData: List<int>.from(mod),
         );
-        expect(result.success, isTrue,
-            reason: 'Failed for mod of length ${mod.length}');
+        expect(
+          result.success,
+          isTrue,
+          reason: 'Failed for mod of length ${mod.length}',
+        );
         expect(CrcPatcher.computeCrc32(result.patchedData!), targetCrc);
       }
     });

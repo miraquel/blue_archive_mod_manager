@@ -42,7 +42,7 @@ dependencies:
   # File and path handling
   path_provider: ^2.1.0
   path: ^1.8.0
-  file_picker: ^6.0.0
+  file_picker: ^11.0.2
 
   # Serialization
   freezed_annotation: ^2.4.0
@@ -88,6 +88,9 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    - assets/data/global_android_asset_index.json
 
   # To add assets to your application, add an assets section, like this:
   # assets:

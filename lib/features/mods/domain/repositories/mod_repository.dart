@@ -6,4 +6,5 @@ abstract class ModRepository {
   Future<void> saveMod(ModEntry mod);
   Future<void> deleteMod(String id);
   Future<void> updateMod(ModEntry mod);
+  Future<void> replaceAllMods(List<ModEntry> mods);
 }

@@ -144,85 +144,94 @@ class ShizukuBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
             "fileExists" -> {
                 val path = call.argument<String>("path")
-                if (path == null || fileService == null) {
+                val service = fileService
+                if (path == null || service == null) {
                     result.error("INVALID", "Path null or service not bound", null)
                     return
                 }
-                result.success(fileService!!.fileExists(path))
+                result.success(service.fileExists(path))
             }
 
             "readFile" -> {
                 val path = call.argument<String>("path")
-                if (path == null || fileService == null) {
+                val service = fileService
+                if (path == null || service == null) {
                     result.error("INVALID", "Path null or service not bound", null)
                     return
                 }
-                result.success(fileService!!.readFile(path))
+                result.success(service.readFile(path))
             }
 
             "writeFile" -> {
                 val path = call.argument<String>("path")
                 val data = call.argument<ByteArray>("data")
-                if (path == null || data == null || fileService == null) {
+                val service = fileService
+                if (path == null || data == null || service == null) {
                     result.error("INVALID", "Args null or service not bound", null)
                     return
                 }
-                result.success(fileService!!.writeFile(path, data))
+                result.success(service.writeFile(path, data))
             }
 
             "copyFile" -> {
                 val source = call.argument<String>("source")
                 val dest = call.argument<String>("dest")
-                if (source == null || dest == null || fileService == null) {
+                val service = fileService
+                if (source == null || dest == null || service == null) {
                     result.error("INVALID", "Args null or service not bound", null)
                     return
                 }
-                result.success(fileService!!.copyFile(source, dest))
+                result.success(service.copyFile(source, dest))
             }
 
             "deleteFile" -> {
                 val path = call.argument<String>("path")
-                if (path == null || fileService == null) {
+                val service = fileService
+                if (path == null || service == null) {
                     result.error("INVALID", "Path null or service not bound", null)
                     return
                 }
-                result.success(fileService!!.deleteFile(path))
+                result.success(service.deleteFile(path))
             }
 
             "listFiles" -> {
                 val path = call.argument<String>("path")
-                if (path == null || fileService == null) {
+                val service = fileService
+                if (path == null || service == null) {
                     result.error("INVALID", "Path null or service not bound", null)
                     return
                 }
-                result.success(fileService!!.listFiles(path))
+                result.success(service.listFiles(path))
             }
 
             "createDirectory" -> {
                 val path = call.argument<String>("path")
-                if (path == null || fileService == null) {
+                val service = fileService
+                if (path == null || service == null) {
                     result.error("INVALID", "Path null or service not bound", null)
                     return
                 }
-                result.success(fileService!!.createDirectory(path))
+                result.success(service.createDirectory(path))
             }
 
             "isDirectory" -> {
                 val path = call.argument<String>("path")
-                if (path == null || fileService == null) {
+                val service = fileService
+                if (path == null || service == null) {
                     result.error("INVALID", "Path null or service not bound", null)
                     return
                 }
-                result.success(fileService!!.isDirectory(path))
+                result.success(service.isDirectory(path))
             }
 
             "getFileSize" -> {
                 val path = call.argument<String>("path")
-                if (path == null || fileService == null) {
+                val service = fileService
+                if (path == null || service == null) {
                     result.error("INVALID", "Path null or service not bound", null)
                     return
                 }
-                result.success(fileService!!.getFileSize(path))
+                result.success(service.getFileSize(path))
             }
 
             "isPackageInstalled" -> {

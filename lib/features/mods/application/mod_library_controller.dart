@@ -33,12 +33,17 @@ class ModLibraryController extends AsyncNotifier<List<ModEntry>> {
       AppLogger.info('Deleted mod: $id', tag: 'ModLibrary');
       await refresh();
     } catch (e, st) {
-      AppLogger.error('Failed to delete mod: $id', tag: 'ModLibrary', error: e, stackTrace: st);
+      AppLogger.error(
+        'Failed to delete mod: $id',
+        tag: 'ModLibrary',
+        error: e,
+        stackTrace: st,
+      );
       state = AsyncError(e, st);
     }
   }
 
-  Future<void> updateModTarget(String modId, String targetFile) async {
+  Future<void> updateModTarget(String modId, String? targetFileOverride) async {
     try {
       final repo = ref.read(modRepositoryProvider);
       final mod = await repo.getModById(modId);
@@ -46,10 +51,18 @@ class ModLibraryController extends AsyncNotifier<List<ModEntry>> {
         throw StateError('Mod not found: $modId');
       }
 
-      final updated = mod.copyWith(targetFile: targetFile);
+      final normalizedOverride = targetFileOverride?.trim();
+      final effectiveOverride =
+          normalizedOverride == null ||
+              normalizedOverride.isEmpty ||
+              normalizedOverride == mod.originalFileName
+          ? null
+          : normalizedOverride;
+
+      final updated = mod.copyWith(targetFileOverride: effectiveOverride);
       await repo.updateMod(updated);
       AppLogger.info(
-        'Updated mod target: $modId -> $targetFile',
+        'Updated mod target override: $modId -> ${updated.targetFile}',
         tag: 'ModLibrary',
       );
       await refresh();
@@ -62,5 +75,9 @@ class ModLibraryController extends AsyncNotifier<List<ModEntry>> {
       );
       state = AsyncError(e, st);
     }
+  }
+
+  Future<void> clearModTargetOverride(String modId) async {
+    await updateModTarget(modId, null);
   }
 }
