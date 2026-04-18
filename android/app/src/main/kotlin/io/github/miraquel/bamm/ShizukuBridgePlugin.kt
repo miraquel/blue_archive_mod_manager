@@ -1,4 +1,4 @@
-package com.example.bamm
+package io.github.miraquel.bamm
 
 import android.content.ComponentName
 import android.content.Context
@@ -54,7 +54,7 @@ class ShizukuBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         applicationContext = binding.applicationContext
-        channel = MethodChannel(binding.binaryMessenger, "com.example.bamm/shizuku")
+        channel = MethodChannel(binding.binaryMessenger, "io.github.miraquel.bamm/shizuku")
         channel.setMethodCallHandler(this)
 
         Shizuku.addBinderReceivedListenerSticky(binderReceivedListener)

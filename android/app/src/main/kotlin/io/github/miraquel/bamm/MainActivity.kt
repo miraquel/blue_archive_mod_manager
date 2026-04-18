@@ -1,4 +1,4 @@
-package com.example.bamm
+package io.github.miraquel.bamm
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine

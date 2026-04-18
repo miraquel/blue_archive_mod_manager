@@ -12,7 +12,7 @@ class MethodChannelShizukuBridge implements ShizukuBridge {
     _channel.setMethodCallHandler(_handleMethodCall);
   }
 
-  static const _channel = MethodChannel('com.example.bamm/shizuku');
+  static const _channel = MethodChannel('io.github.miraquel.bamm/shizuku');
   static const _tag = 'ShizukuBridge';
 
   final _binderReceivedController = StreamController<void>.broadcast();

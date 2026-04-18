@@ -1,4 +1,4 @@
-package com.example.bamm
+package io.github.miraquel.bamm
 
 import android.content.Context
 import android.os.RemoteException

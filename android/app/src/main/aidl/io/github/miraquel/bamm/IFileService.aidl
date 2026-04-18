@@ -1,4 +1,4 @@
-package com.example.bamm;
+package io.github.miraquel.bamm;
 
 interface IFileService {
     boolean fileExists(String path);
