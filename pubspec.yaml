@@ -51,6 +51,9 @@ dependencies:
   # Navigation
   go_router: ^13.0.0
 
+  # Networking
+  http: ^1.2.0
+
   # Storage and utilities
   shared_preferences: ^2.2.0
   collection: ^1.18.0

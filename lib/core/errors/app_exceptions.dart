@@ -56,3 +56,11 @@ class CrcPatchException implements Exception {
   @override
   String toString() => 'CrcPatchException: $message';
 }
+
+class RepairException implements Exception {
+  const RepairException([this.message = 'Repair operation failed']);
+  final String message;
+
+  @override
+  String toString() => 'RepairException: $message';
+}
