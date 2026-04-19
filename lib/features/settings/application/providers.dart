@@ -1,8 +1,7 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+// Recovery-related providers are now in:
+// bamm/features/recovery/application/providers.dart
+//
+// The old ValidatorIndexController has been replaced by RepairController.
+// This file is kept for any future settings-specific providers.
 
-import 'package:bamm/features/settings/application/validator_index_controller.dart';
-
-final validatorIndexControllerProvider =
-    AsyncNotifierProvider<ValidatorIndexController, ValidatorIndexState>(
-      ValidatorIndexController.new,
-    );
+export 'package:bamm/features/recovery/application/providers.dart';
