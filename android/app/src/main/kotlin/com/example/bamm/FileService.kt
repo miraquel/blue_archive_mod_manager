@@ -6,6 +6,7 @@ import android.system.Os
 import android.util.Log
 import java.io.File
 import java.io.FileInputStream
+import java.io.RandomAccessFile
 import java.security.MessageDigest
 import kotlin.math.min
 
@@ -40,12 +41,60 @@ class FileService : IFileService.Stub {
         }
     }
 
+    override fun readFileChunk(path: String, offset: Long, length: Int): ByteArray? {
+        if (offset < 0 || length < 0) {
+            return null
+        }
+
+        return try {
+            RandomAccessFile(path, "r").use { file ->
+                val fileLength = file.length()
+                if (offset >= fileLength) {
+                    ByteArray(0)
+                } else {
+                    file.seek(offset)
+                    val chunkLength = min(length.toLong(), fileLength - offset).toInt()
+                    val buffer = ByteArray(chunkLength)
+                    val bytesRead = file.read(buffer)
+                    when {
+                        bytesRead < 0 -> ByteArray(0)
+                        bytesRead == chunkLength -> buffer
+                        else -> buffer.copyOf(bytesRead)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "readFileChunk error: ${e.message}")
+            null
+        }
+    }
+
     override fun writeFile(path: String, data: ByteArray): Boolean {
         return try {
             File(path).writeBytes(data)
             true
         } catch (e: Exception) {
             Log.e(TAG, "writeFile error: ${e.message}")
+            false
+        }
+    }
+
+    override fun writeFileChunk(path: String, data: ByteArray, offset: Long, truncate: Boolean): Boolean {
+        if (offset < 0) {
+            return false
+        }
+
+        return try {
+            RandomAccessFile(path, "rw").use { file ->
+                if (truncate) {
+                    file.setLength(0)
+                }
+                file.seek(offset)
+                file.write(data)
+            }
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "writeFileChunk error: ${e.message}")
             false
         }
     }

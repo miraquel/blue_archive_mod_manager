@@ -11,6 +11,7 @@ import android.util.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.io.ByteArrayOutputStream
 import rikka.shizuku.Shizuku
 
 class ShizukuBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
@@ -36,7 +37,7 @@ class ShizukuBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     private val userServiceArgs = Shizuku.UserServiceArgs(
         ComponentName(BuildConfig.APPLICATION_ID, FileService::class.java.name)
-    ).daemon(false).processNameSuffix("file_service").debuggable(BuildConfig.DEBUG).version(1)
+    ).daemon(false).processNameSuffix("file_service").debuggable(BuildConfig.DEBUG).version(2)
 
     private val userServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -162,7 +163,7 @@ class ShizukuBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     return
                 }
                 withFileService(result) { service ->
-                    service.readFile(path)
+                    readFileCompat(service, path)
                 }
             }
 
@@ -174,7 +175,7 @@ class ShizukuBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                     return
                 }
                 withFileService(result) { service ->
-                    service.writeFile(path, data)
+                    writeFileCompat(service, path, data)
                 }
             }
 
@@ -356,6 +357,67 @@ class ShizukuBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
     }
 
+    private fun readFileCompat(service: IFileService, path: String): ByteArray? {
+        val size = service.getFileSize(path)
+        if (size < 0) {
+            return null
+        }
+
+        if (size <= FILE_TRANSFER_CHUNK_BYTES) {
+            return service.readFile(path)
+        }
+
+        Log.i(TAG, "Reading $path in $FILE_TRANSFER_CHUNK_BYTES-byte chunks (size=$size)")
+        val output = if (size in 1..Int.MAX_VALUE.toLong()) {
+            ByteArrayOutputStream(size.toInt())
+        } else {
+            ByteArrayOutputStream()
+        }
+        var offset = 0L
+
+        while (offset < size) {
+            val chunkLength = minOf(FILE_TRANSFER_CHUNK_BYTES.toLong(), size - offset).toInt()
+            val chunk = service.readFileChunk(path, offset, chunkLength)
+            if (chunk == null) {
+                Log.e(TAG, "readFileChunk returned null for $path at offset=$offset")
+                return null
+            }
+            if (chunk.isEmpty()) {
+                Log.e(TAG, "readFileChunk returned empty data before EOF for $path at offset=$offset")
+                return null
+            }
+
+            output.write(chunk)
+            offset += chunk.size.toLong()
+        }
+
+        return output.toByteArray()
+    }
+
+    private fun writeFileCompat(service: IFileService, path: String, data: ByteArray): Boolean {
+        if (data.size <= FILE_TRANSFER_CHUNK_BYTES) {
+            return service.writeFile(path, data)
+        }
+
+        Log.i(TAG, "Writing $path in $FILE_TRANSFER_CHUNK_BYTES-byte chunks (size=${data.size})")
+        var offset = 0
+        var truncate = true
+
+        while (offset < data.size) {
+            val endExclusive = minOf(offset + FILE_TRANSFER_CHUNK_BYTES, data.size)
+            val chunk = data.copyOfRange(offset, endExclusive)
+            if (!service.writeFileChunk(path, chunk, offset.toLong(), truncate)) {
+                Log.e(TAG, "writeFileChunk failed for $path at offset=$offset")
+                return false
+            }
+
+            truncate = false
+            offset = endExclusive
+        }
+
+        return true
+    }
+
     private inline fun <T> withFileService(
         result: MethodChannel.Result,
         block: (IFileService) -> T
@@ -384,5 +446,6 @@ class ShizukuBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     companion object {
         private const val TAG = "ShizukuBridgePlugin"
+        private const val FILE_TRANSFER_CHUNK_BYTES = 256 * 1024
     }
 }
