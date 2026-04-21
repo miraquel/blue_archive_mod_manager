@@ -10,10 +10,17 @@ void main() {
     const profiles = [
       StudentProfile(
         id: '1001',
+        pathName: 'aru',
         devName: 'Aru',
         nameEn: 'Aru',
         nameTw: '亞瑠',
         nameCn: '阿露',
+      ),
+      StudentProfile(
+        id: '1002',
+        pathName: 'aru_newyear',
+        devName: 'Aru_NewYear',
+        nameEn: 'Aru',
       ),
       StudentProfile(
         id: '233',
@@ -24,7 +31,17 @@ void main() {
       ),
     ];
 
-    test('matches by developer name first', () {
+    test('matches by path name first', () {
+      final match = matcher.matchFileName(
+        'aru_newyear-_mxdependency-2024-11-18_000_assets_all_2578014769.bundle',
+        profiles,
+      );
+
+      expect(match?.id, '1002');
+      expect(match?.pathName, 'aru_newyear');
+    });
+
+    test('matches by developer name when no path name', () {
       final match = matcher.matchFileName('portrait_CH0233_idle.png', profiles);
 
       expect(match?.id, '233');
@@ -45,6 +62,36 @@ void main() {
       );
 
       expect(match, isNull);
+    });
+  });
+
+  group('ModStudentMatcher regression', () {
+    const matcher = ModStudentMatcher();
+
+    // "aris" must not match a Mari file because "aris" only appears as a
+    // substring inside the "maris" token sequence (mari_spr → marisspr after
+    // old normalization), not as its own token.
+    test('does not match Aris when filename belongs to Mari', () {
+      const aris = StudentProfile(
+        id: '10000',
+        pathName: 'aris',
+        devName: 'Aris',
+        nameEn: 'Aris',
+      );
+      const mari = StudentProfile(
+        id: '10001',
+        pathName: 'mari',
+        devName: 'Mari',
+        nameEn: 'Mari',
+      );
+
+      final match = matcher.matchFileName(
+        'assets-_mx-spinecharacters-mari_spr-_mxdependency-2024-11-18-002_assets_all_3593738173.bundle',
+        [aris, mari],
+      );
+
+      expect(match?.id, '10001');
+      expect(match?.devName, 'Mari');
     });
   });
 

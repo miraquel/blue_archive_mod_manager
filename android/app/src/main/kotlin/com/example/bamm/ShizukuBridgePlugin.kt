@@ -4,7 +4,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.os.DeadObjectException
 import android.os.IBinder
+import android.os.RemoteException
 import android.util.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
@@ -144,94 +146,127 @@ class ShizukuBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
             "fileExists" -> {
                 val path = call.argument<String>("path")
-                val service = fileService
-                if (path == null || service == null) {
+                if (path == null) {
                     result.error("INVALID", "Path null or service not bound", null)
                     return
                 }
-                result.success(service.fileExists(path))
+                withFileService(result) { service ->
+                    service.fileExists(path)
+                }
             }
 
             "readFile" -> {
                 val path = call.argument<String>("path")
-                val service = fileService
-                if (path == null || service == null) {
+                if (path == null) {
                     result.error("INVALID", "Path null or service not bound", null)
                     return
                 }
-                result.success(service.readFile(path))
+                withFileService(result) { service ->
+                    service.readFile(path)
+                }
             }
 
             "writeFile" -> {
                 val path = call.argument<String>("path")
                 val data = call.argument<ByteArray>("data")
-                val service = fileService
-                if (path == null || data == null || service == null) {
+                if (path == null || data == null) {
                     result.error("INVALID", "Args null or service not bound", null)
                     return
                 }
-                result.success(service.writeFile(path, data))
+                withFileService(result) { service ->
+                    service.writeFile(path, data)
+                }
             }
 
             "copyFile" -> {
                 val source = call.argument<String>("source")
                 val dest = call.argument<String>("dest")
-                val service = fileService
-                if (source == null || dest == null || service == null) {
+                if (source == null || dest == null) {
                     result.error("INVALID", "Args null or service not bound", null)
                     return
                 }
-                result.success(service.copyFile(source, dest))
+                withFileService(result) { service ->
+                    service.copyFile(source, dest)
+                }
             }
 
             "deleteFile" -> {
                 val path = call.argument<String>("path")
-                val service = fileService
-                if (path == null || service == null) {
+                if (path == null) {
                     result.error("INVALID", "Path null or service not bound", null)
                     return
                 }
-                result.success(service.deleteFile(path))
+                withFileService(result) { service ->
+                    service.deleteFile(path)
+                }
             }
 
             "listFiles" -> {
                 val path = call.argument<String>("path")
-                val service = fileService
-                if (path == null || service == null) {
+                if (path == null) {
                     result.error("INVALID", "Path null or service not bound", null)
                     return
                 }
-                result.success(service.listFiles(path))
+                withFileService(result) { service ->
+                    service.listFiles(path)
+                }
+            }
+
+            "listFilesPage" -> {
+                val path = call.argument<String>("path")
+                val offset = call.argument<Int>("offset")
+                val limit = call.argument<Int>("limit")
+                if (path == null || offset == null || limit == null) {
+                    result.error("INVALID", "Args null or service not bound", null)
+                    return
+                }
+                withFileService(result) { service ->
+                    service.listFilesPage(path, offset, limit)
+                }
             }
 
             "createDirectory" -> {
                 val path = call.argument<String>("path")
-                val service = fileService
-                if (path == null || service == null) {
+                if (path == null) {
                     result.error("INVALID", "Path null or service not bound", null)
                     return
                 }
-                result.success(service.createDirectory(path))
+                withFileService(result) { service ->
+                    service.createDirectory(path)
+                }
             }
 
             "isDirectory" -> {
                 val path = call.argument<String>("path")
-                val service = fileService
-                if (path == null || service == null) {
+                if (path == null) {
                     result.error("INVALID", "Path null or service not bound", null)
                     return
                 }
-                result.success(service.isDirectory(path))
+                withFileService(result) { service ->
+                    service.isDirectory(path)
+                }
             }
 
             "getFileSize" -> {
                 val path = call.argument<String>("path")
-                val service = fileService
-                if (path == null || service == null) {
+                if (path == null) {
                     result.error("INVALID", "Path null or service not bound", null)
                     return
                 }
-                result.success(service.getFileSize(path))
+                withFileService(result) { service ->
+                    service.getFileSize(path)
+                }
+            }
+
+            "getFileMd5" -> {
+                val path = call.argument<String>("path")
+                if (path == null) {
+                    result.error("INVALID", "Path null or service not bound", null)
+                    return
+                }
+                withFileService(result) { service ->
+                    service.getFileMd5(path)
+                }
             }
 
             "isPackageInstalled" -> {
@@ -252,6 +287,24 @@ class ShizukuBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 result.success(launchPackage(packageName))
             }
 
+            "getPackageVersionCode" -> {
+                val packageName = call.argument<String>("packageName")
+                if (packageName == null) {
+                    result.error("INVALID", "packageName required", null)
+                    return
+                }
+                result.success(getPackageVersionCode(packageName))
+            }
+
+            "getPackageVersionName" -> {
+                val packageName = call.argument<String>("packageName")
+                if (packageName == null) {
+                    result.error("INVALID", "packageName required", null)
+                    return
+                }
+                result.success(getPackageVersionName(packageName))
+            }
+
             else -> result.notImplemented()
         }
     }
@@ -266,6 +319,30 @@ class ShizukuBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
     }
 
+    private fun getPackageVersionName(packageName: String): String? {
+        val ctx = applicationContext ?: return null
+        return try {
+            ctx.packageManager.getPackageInfo(packageName, 0).versionName
+        } catch (e: PackageManager.NameNotFoundException) {
+            null
+        }
+    }
+
+    private fun getPackageVersionCode(packageName: String): Long {
+        val ctx = applicationContext ?: return -1L
+        return try {
+            val info = ctx.packageManager.getPackageInfo(packageName, 0)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                info.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                info.versionCode.toLong()
+            }
+        } catch (e: PackageManager.NameNotFoundException) {
+            -1L
+        }
+    }
+
     private fun launchPackage(packageName: String): Boolean {
         val ctx = applicationContext ?: return false
         return try {
@@ -276,6 +353,32 @@ class ShizukuBridgePlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         } catch (e: Exception) {
             Log.e(TAG, "launchPackage error: ${e.message}")
             false
+        }
+    }
+
+    private inline fun <T> withFileService(
+        result: MethodChannel.Result,
+        block: (IFileService) -> T
+    ) {
+        val service = fileService
+        if (service == null) {
+            result.error("INVALID", "Service not bound", null)
+            return
+        }
+
+        try {
+            result.success(block(service))
+        } catch (e: DeadObjectException) {
+            fileService = null
+            isServiceBound = false
+            Log.e(TAG, "UserService died: ${e.message}", e)
+            result.error("SERVICE_DEAD", "Shizuku file service died", null)
+        } catch (e: RemoteException) {
+            Log.e(TAG, "RemoteException: ${e.message}", e)
+            result.error("REMOTE_ERROR", e.message, null)
+        } catch (e: Exception) {
+            Log.e(TAG, "Service call failed: ${e.message}", e)
+            result.error("SERVICE_ERROR", e.message, null)
         }
     }
 

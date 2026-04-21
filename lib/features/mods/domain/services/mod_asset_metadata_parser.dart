@@ -15,7 +15,7 @@ class ModAssetMetadataParser {
     caseSensitive: false,
   );
   static final RegExp _studentVariantPattern = RegExp(
-    r'^([a-z]+)_(original|birthday|ex|idol|casual|insane|event|tails|swimsuit|newyear|christmas|track|camp|hotspring|bunny|maid|dress|armor|sport|sports|icecream)(?:_|$)',
+    r'^([a-z]+)_(original|birthday|ex|idol|casual|insane|event|tails|swimsuit|newyear|christmas|track|camp|hotspring|bunny|maid|dress|armor|sport|sports|icecream)(?:[-_]|$)',
   );
 
   const ModAssetMetadataParser();

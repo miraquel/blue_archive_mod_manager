@@ -30,6 +30,32 @@ void main() {
       expect(resource.fileName, 'catalog.json');
     });
 
+    test('gameDataRelativePath keeps Nexon manifest paths unchanged', () {
+      const resource = ManifestResource(
+        group: 'Preload',
+        resourcePath: 'Preload/TableBundles/ExcelDB/foo.bytes',
+        resourceSize: 256,
+        resourceHash: 'def456',
+      );
+      expect(
+        resource.gameDataRelativePath,
+        'Preload/TableBundles/ExcelDB/foo.bytes',
+      );
+    });
+
+    test('gameDataRelativePath strips legacy Android prefix', () {
+      const resource = ManifestResource(
+        group: 'Root',
+        resourcePath: 'Android/Preload/TableBundles/foo.bytes',
+        resourceSize: 256,
+        resourceHash: 'ghi789',
+      );
+      expect(
+        resource.gameDataRelativePath,
+        'Preload/TableBundles/foo.bytes',
+      );
+    });
+
     test('fromJson round-trips correctly', () {
       const resource = ManifestResource(
         group: 'g1',

@@ -7,9 +7,11 @@ interface IFileService {
     boolean copyFile(String sourcePath, String destPath);
     boolean deleteFile(String path);
     List<String> listFiles(String directoryPath);
+    List<String> listFilesPage(String directoryPath, int offset, int limit);
     boolean createDirectory(String path);
     boolean isDirectory(String path);
     long getFileSize(String path);
+    String getFileMd5(String path);
     void destroy();
     void exit();
 }

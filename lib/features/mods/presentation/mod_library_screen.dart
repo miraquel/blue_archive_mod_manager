@@ -885,7 +885,6 @@ class _InfoRow extends StatelessWidget {
             child: Text(
               value,
               style: Theme.of(context).textTheme.bodySmall,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

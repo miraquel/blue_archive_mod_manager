@@ -125,6 +125,25 @@ class MethodChannelShizukuBridge implements ShizukuBridge {
   }
 
   @override
+  Future<List<String>> listFilesPage(
+    String directoryPath,
+    int offset,
+    int limit,
+  ) async {
+    try {
+      final result = await _channel.invokeListMethod<String>('listFilesPage', {
+        'path': directoryPath,
+        'offset': offset,
+        'limit': limit,
+      });
+      return result ?? [];
+    } on PlatformException catch (e, st) {
+      _logPlatformError('listFilesPage', e, st);
+      return [];
+    }
+  }
+
+  @override
   Future<bool> createDirectory(String path) =>
       _invokeBool('createDirectory', {'path': path});
 
@@ -146,6 +165,16 @@ class MethodChannelShizukuBridge implements ShizukuBridge {
     }
   }
 
+  @override
+  Future<String?> getFileMd5(String path) async {
+    try {
+      return await _channel.invokeMethod<String>('getFileMd5', {'path': path});
+    } on PlatformException catch (e, st) {
+      _logPlatformError('getFileMd5', e, st);
+      return null;
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Package operations
   // ---------------------------------------------------------------------------
@@ -157,6 +186,33 @@ class MethodChannelShizukuBridge implements ShizukuBridge {
   @override
   Future<bool> launchPackage(String packageName) =>
       _invokeBool('launchPackage', {'packageName': packageName});
+
+  @override
+  Future<String?> getPackageVersionName(String packageName) async {
+    try {
+      return await _channel.invokeMethod<String>(
+        'getPackageVersionName',
+        {'packageName': packageName},
+      );
+    } on PlatformException catch (e, st) {
+      _logPlatformError('getPackageVersionName', e, st);
+      return null;
+    }
+  }
+
+  @override
+  Future<int> getPackageVersionCode(String packageName) async {
+    try {
+      final code = await _channel.invokeMethod<int>(
+        'getPackageVersionCode',
+        {'packageName': packageName},
+      );
+      return code ?? -1;
+    } on PlatformException catch (e, st) {
+      _logPlatformError('getPackageVersionCode', e, st);
+      return -1;
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Event streams

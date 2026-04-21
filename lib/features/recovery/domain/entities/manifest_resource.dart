@@ -18,6 +18,18 @@ class ManifestResource {
     return lastSlash < 0 ? resourcePath : resourcePath.substring(lastSlash + 1);
   }
 
+  /// Path relative to the installed `.../GameData` directory.
+  ///
+  /// Strips the `GameData/` prefix from manifest entries (e.g.
+  /// `GameData/Android/foo.bundle` → `Android/foo.bundle`).
+  String get gameDataRelativePath {
+    const prefix = 'GameData/';
+    if (resourcePath.startsWith(prefix)) {
+      return resourcePath.substring(prefix.length);
+    }
+    return resourcePath;
+  }
+
   factory ManifestResource.fromJson(Map<String, dynamic> json) {
     return ManifestResource(
       group: json['group'] as String? ?? '',

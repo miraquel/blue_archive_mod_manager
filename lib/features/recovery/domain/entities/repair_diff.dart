@@ -8,6 +8,9 @@ enum FileDiffStatus {
   /// File exists but size differs from the manifest.
   sizeMismatch,
 
+  /// File exists and size matches, but content hash differs.
+  hashMismatch,
+
   /// File listed in manifest but missing from device.
   missing,
 }
@@ -17,20 +20,23 @@ class FileDiffEntry {
   final ManifestResource manifestEntry;
   final FileDiffStatus status;
   final int? localSize;
+  final String? localPath;
 
   const FileDiffEntry({
     required this.manifestEntry,
     required this.status,
     this.localSize,
+    this.localPath,
   });
 
   bool get needsRepair =>
       status == FileDiffStatus.missing ||
-      status == FileDiffStatus.sizeMismatch;
+      status == FileDiffStatus.sizeMismatch ||
+      status == FileDiffStatus.hashMismatch;
 
   @override
   String toString() =>
-      'FileDiffEntry(${manifestEntry.resourcePath}, $status)';
+      'FileDiffEntry(${manifestEntry.resourcePath}, $status, localPath: $localPath)';
 }
 
 /// Aggregated diff result comparing a manifest against an installation.
@@ -55,7 +61,10 @@ class RepairDiff {
 
   List<FileDiffEntry> get mismatchedFiles =>
       entries
-          .where((e) => e.status == FileDiffStatus.sizeMismatch)
+          .where((e) {
+            return e.status == FileDiffStatus.sizeMismatch ||
+                e.status == FileDiffStatus.hashMismatch;
+          })
           .toList(growable: false);
 
   List<FileDiffEntry> get okFiles =>

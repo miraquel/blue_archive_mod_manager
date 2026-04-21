@@ -5,6 +5,9 @@ import android.os.RemoteException
 import android.system.Os
 import android.util.Log
 import java.io.File
+import java.io.FileInputStream
+import java.security.MessageDigest
+import kotlin.math.min
 
 class FileService : IFileService.Stub {
     companion object {
@@ -75,6 +78,28 @@ class FileService : IFileService.Stub {
         }
     }
 
+    override fun listFilesPage(directoryPath: String, offset: Int, limit: Int): List<String> {
+        return try {
+            if (limit <= 0 || offset < 0) {
+                emptyList()
+            } else {
+                val children = File(directoryPath)
+                    .listFiles()
+                    ?.map { it.name }
+                    ?.sorted()
+                    ?: emptyList()
+                if (offset >= children.size) {
+                    emptyList()
+                } else {
+                    children.subList(offset, min(offset + limit, children.size))
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "listFilesPage error: ${e.message}")
+            emptyList()
+        }
+    }
+
     override fun createDirectory(path: String): Boolean {
         return try {
             File(path).mkdirs()
@@ -99,6 +124,26 @@ class FileService : IFileService.Stub {
         } catch (e: Exception) {
             Log.e(TAG, "getFileSize error: ${e.message}")
             -1
+        }
+    }
+
+    override fun getFileMd5(path: String): String? {
+        return try {
+            val digest = MessageDigest.getInstance("MD5")
+            FileInputStream(File(path)).use { input ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read <= 0) {
+                        break
+                    }
+                    digest.update(buffer, 0, read)
+                }
+            }
+            digest.digest().joinToString("") { "%02x".format(it) }
+        } catch (e: Exception) {
+            Log.e(TAG, "getFileMd5 error: ${e.message}")
+            null
         }
     }
 

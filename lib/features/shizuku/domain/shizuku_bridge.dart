@@ -54,6 +54,11 @@ abstract class ShizukuBridge {
   /// List files in [directoryPath].
   Future<List<String>> listFiles(String directoryPath);
 
+  /// List a single page of child names in [directoryPath].
+  ///
+  /// The returned strings are entry names, not absolute paths.
+  Future<List<String>> listFilesPage(String directoryPath, int offset, int limit);
+
   /// Create a directory at [path].
   Future<bool> createDirectory(String path);
 
@@ -62,6 +67,11 @@ abstract class ShizukuBridge {
 
   /// Get the size in bytes of the file at [path].
   Future<int> getFileSize(String path);
+
+  /// Compute the MD5 hash of the file at [path].
+  ///
+  /// Returns `null` if the hash cannot be computed.
+  Future<String?> getFileMd5(String path);
 
   // ---------------------------------------------------------------------------
   // Package operations
@@ -72,6 +82,14 @@ abstract class ShizukuBridge {
 
   /// Launch the app identified by [packageName].
   Future<bool> launchPackage(String packageName);
+
+  /// Get the installed version code (Play Store build number) for [packageName].
+  /// Returns -1 if the package is not installed.
+  Future<int> getPackageVersionCode(String packageName);
+
+  /// Get the installed version name string (e.g. "1.71.417475") for [packageName].
+  /// Returns null if the package is not installed.
+  Future<String?> getPackageVersionName(String packageName);
 
   // ---------------------------------------------------------------------------
   // Event streams (native → Flutter)

@@ -7,25 +7,26 @@ class ModStudentMatcher {
     String fileName,
     Iterable<StudentProfile> profiles,
   ) {
-    final normalizedFileName = _normalize(fileName);
-    if (normalizedFileName.isEmpty) {
-      return null;
-    }
+    final fileTokens = _tokenize(fileName);
+    if (fileTokens.isEmpty) return null;
 
     return _findBestMatch(
-          normalizedFileName,
+          fileTokens,
           profiles,
-          (profile) => [profile.devName],
+          (profile) => [
+            if (profile.pathName != null) profile.pathName!,
+            profile.devName,
+          ],
         ) ??
         _findBestMatch(
-          normalizedFileName,
+          fileTokens,
           profiles,
           (profile) => profile.localizedNames,
         );
   }
 
   StudentProfile? _findBestMatch(
-    String normalizedFileName,
+    Set<String> fileTokens,
     Iterable<StudentProfile> profiles,
     Iterable<String> Function(StudentProfile profile) termsForProfile,
   ) {
@@ -34,18 +35,14 @@ class ModStudentMatcher {
 
     for (final profile in profiles) {
       for (final rawTerm in termsForProfile(profile)) {
-        final normalizedTerm = _normalize(rawTerm);
-        if (normalizedTerm.length < 2) {
-          continue;
-        }
+        final termTokens = _tokenize(rawTerm);
+        if (termTokens.isEmpty) continue;
 
-        if (!normalizedFileName.contains(normalizedTerm)) {
-          continue;
-        }
+        if (!termTokens.every(fileTokens.contains)) continue;
 
-        if (normalizedTerm.length > bestMatchLength) {
+        if (rawTerm.length > bestMatchLength) {
           bestMatch = profile;
-          bestMatchLength = normalizedTerm.length;
+          bestMatchLength = rawTerm.length;
         }
       }
     }
@@ -53,10 +50,11 @@ class ModStudentMatcher {
     return bestMatch;
   }
 
-  String _normalize(String value) {
-    return value.toLowerCase().replaceAll(
-      RegExp(r'[^a-z0-9\u4e00-\u9fff]+'),
-      '',
-    );
+  Set<String> _tokenize(String value) {
+    return value
+        .toLowerCase()
+        .split(RegExp(r'[^a-z0-9\u4e00-\u9fff]+'))
+        .where((t) => t.length >= 2)
+        .toSet();
   }
 }

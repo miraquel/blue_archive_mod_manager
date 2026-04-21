@@ -11,6 +11,16 @@ class GameInstall {
   /// Whether we can access the game data directory via Shizuku.
   final bool isAccessible;
 
+  /// Root directory from which Nexon manifest resource paths are resolved.
+  ///
+  /// The Nexon manifest lists paths like `Preload/TableBundles/...` which are
+  /// relative to `GameData/`, not to `GameData/Android/`. This is the parent
+  /// of [gameDataPath].
+  String get repairRootPath {
+    final i = gameDataPath.lastIndexOf('/');
+    return i > 0 ? gameDataPath.substring(0, i) : gameDataPath;
+  }
+
   const GameInstall({
     required this.region,
     required this.packageName,

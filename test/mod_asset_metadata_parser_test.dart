@@ -25,6 +25,28 @@ void main() {
       expect(metadata.assetDate, DateTime(2024, 11, 18));
     });
 
+    test('extracts variant from costume-only bundles ending in hyphen', () {
+      final metadata = parser.parse(
+        'aru_newyear-_mxdependency-2024-11-18_000_assets_all_2578014769.bundle',
+        hasStudentMatch: true,
+      );
+
+      expect(metadata.category, ModAssetCategory.character);
+      expect(metadata.family, 'aru_newyear');
+      expect(metadata.variant, 'newyear');
+    });
+
+    test('extracts original variant from simple character bundles', () {
+      final metadata = parser.parse(
+        'airi_original-_mxdependency-2024-11-18_000_assets_all_1172553545.bundle',
+        hasStudentMatch: true,
+      );
+
+      expect(metadata.category, ModAssetCategory.character);
+      expect(metadata.family, 'airi_original');
+      expect(metadata.variant, 'original');
+    });
+
     test('detects shared skill assets from filename patterns', () {
       final metadata = parser.parse(
         'assets-_mx-3dobject-common_skill_healbomb_weapon-_mxdependency-2024-11-18_000_assets_all_695917847.bundle',

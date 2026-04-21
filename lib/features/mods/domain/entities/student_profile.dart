@@ -1,5 +1,8 @@
 class StudentProfile {
   final String id;
+  /// Lowercase asset-path identifier from SchaleDB (e.g. `aru_newyear`).
+  /// Matches the prefix used in game bundle filenames directly.
+  final String? pathName;
   final String devName;
   final String nameEn;
   final String? nameTw;
@@ -7,6 +10,7 @@ class StudentProfile {
 
   const StudentProfile({
     required this.id,
+    this.pathName,
     required this.devName,
     required this.nameEn,
     this.nameTw,
@@ -28,6 +32,7 @@ class StudentProfile {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'pathName': pathName,
       'devName': devName,
       'nameEn': nameEn,
       'nameTw': nameTw,
@@ -38,6 +43,7 @@ class StudentProfile {
   factory StudentProfile.fromJson(Map<String, dynamic> json) {
     return StudentProfile(
       id: json['id'] as String,
+      pathName: json['pathName'] as String?,
       devName: json['devName'] as String,
       nameEn: json['nameEn'] as String,
       nameTw: json['nameTw'] as String?,

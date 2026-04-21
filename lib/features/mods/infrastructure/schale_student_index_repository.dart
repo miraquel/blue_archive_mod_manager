@@ -114,6 +114,7 @@ class SchaleStudentIndexRepository implements StudentIndexRepository {
     for (final entry in enData.entries) {
       final studentId = entry.key;
       final enStudent = _asStringMap(entry.value);
+      final pathName = enStudent['PathName'];
       final devName = enStudent['DevName'];
       final nameEn = enStudent['Name'];
       if (devName == null ||
@@ -129,6 +130,7 @@ class SchaleStudentIndexRepository implements StudentIndexRepository {
       profiles.add(
         StudentProfile(
           id: studentId,
+          pathName: pathName?.isNotEmpty == true ? pathName : null,
           devName: devName,
           nameEn: nameEn,
           nameTw: twStudent['Name'],

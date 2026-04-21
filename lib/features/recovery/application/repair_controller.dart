@@ -4,6 +4,7 @@ import 'package:bamm/core/constants/app_constants.dart';
 import 'package:bamm/core/errors/app_exceptions.dart';
 import 'package:bamm/core/logging/app_logger.dart';
 import 'package:bamm/features/game_data/application/providers.dart';
+import 'package:bamm/features/mods/application/providers.dart';
 import 'package:bamm/features/recovery/application/providers.dart';
 import 'package:bamm/features/recovery/domain/entities/repair_diff.dart';
 import 'package:bamm/features/recovery/domain/entities/repair_result.dart';
@@ -98,9 +99,18 @@ class RepairController extends Notifier<RepairState> {
         );
       }
 
+      final gameDataRoot = globalInstall.first.repairRootPath;
+      final packageName = globalInstall.first.packageName;
+
+      final versionCode = await bridge.getPackageVersionCode(packageName);
+      final versionName = await bridge.getPackageVersionName(packageName);
+      print('[DIAG] pkg versionCode=$versionCode versionName=$versionName');
+
       final apiClient = ref.read(nexonApiClientProvider);
       final versionInfo = await apiClient.getLatestVersion(
         marketGameId: GamePackages.global,
+        fallbackBuildNumber: versionCode > 0 ? versionCode.toString() : '277251',
+        fallbackVersion: versionName ?? '1.63.277251',
       );
 
       state = state.copyWith(
@@ -111,28 +121,24 @@ class RepairController extends Notifier<RepairState> {
 
       final manifest =
           await apiClient.fetchManifest(versionInfo.resourcePath);
+      if (manifest.isEmpty) {
+        throw const RepairException(
+          'The official manifest returned no resources.',
+        );
+      }
 
       state = state.copyWith(
         statusMessage: 'Scanning ${manifest.length} files...',
       );
 
-      // Filter to only the Android resources relevant to the game data path.
-      final androidResources = manifest
-          .where((r) => r.resourcePath.startsWith('Android/'))
-          .toList(growable: false);
-
       final diffEngine = ref.read(repairDiffEngineProvider);
-      // The gameDataPath points to .../files/PUB/Resource/GameData/Android
-      // but manifest paths start with "Android/...", so use the parent.
-      final gameDataRoot = globalInstall.first.gameDataPath;
-      final parentPath = gameDataRoot.endsWith('/Android')
-          ? gameDataRoot.substring(0, gameDataRoot.length - '/Android'.length)
-          : gameDataRoot.replaceAll(RegExp(r'/Android$'), '');
+      final trackedPaths = await _trackedRepairPaths(gameDataRoot);
 
       final diff = await diffEngine.computeDiff(
         bridge: bridge,
-        gameDataPath: parentPath,
-        manifest: androidResources,
+        gameDataPath: gameDataRoot,
+        manifest: manifest,
+        trackedPaths: trackedPaths,
         onProgress: (current, total) {
           state = state.copyWith(
             statusMessage: 'Scanning file $current / $total...',
@@ -144,18 +150,20 @@ class RepairController extends Notifier<RepairState> {
         versionInfo: versionInfo,
         lastDiff: diff,
         statusMessage: diff.isClean
-            ? 'All ${diff.totalManifestFiles} files match the official manifest.'
+            ? 'All ${diff.totalManifestFiles} scanned file(s) match the official manifest.'
             : '${diff.repairableCount} file(s) need repair '
                 '(${diff.missingFiles.length} missing, '
                 '${diff.mismatchedFiles.length} mismatched).',
       );
 
+      print('[DIAG] scan done: total=${diff.totalManifestFiles} missing=${diff.missingFiles.length} mismatch=${diff.mismatchedFiles.length}');
       AppLogger.info(
         'Scan complete: ${diff.totalManifestFiles} total, '
         '${diff.repairableCount} repairable',
         tag: _tag,
       );
     } catch (e, st) {
+      print('[DIAG] scan error: $e');
       AppLogger.error('Scan failed', tag: _tag, error: e, stackTrace: st);
       state = state.copyWith(
         isScanning: false,
@@ -208,9 +216,6 @@ class RepairController extends Notifier<RepairState> {
         .where((i) => i.region == GameRegion.global && i.isAccessible)
         .first;
     final gameDataRoot = globalInstall.gameDataPath;
-    final parentPath = gameDataRoot.endsWith('/Android')
-        ? gameDataRoot.substring(0, gameDataRoot.length - '/Android'.length)
-        : gameDataRoot.replaceAll(RegExp(r'/Android$'), '');
 
     var successCount = 0;
     final failedFiles = <String>[];
@@ -231,7 +236,7 @@ class RepairController extends Notifier<RepairState> {
           resource: resource,
         );
 
-        final fullPath = '$parentPath/${resource.resourcePath}';
+        final fullPath = entry.localPath ?? '$gameDataRoot/${resource.fileName}';
         final success = await bridge.writeFile(fullPath, data);
         if (success) {
           successCount++;
@@ -356,5 +361,30 @@ class RepairController extends Notifier<RepairState> {
     if (state.error != null) {
       state = state.copyWith(error: null);
     }
+  }
+
+  Future<Set<String>> _trackedRepairPaths(String gameDataRoot) async {
+    final trackedPaths = <String>{};
+
+    final backups = await ref.read(gameDataRepositoryProvider).listBackups();
+    for (final backup in backups) {
+      trackedPaths.add(backup.originalPath);
+    }
+
+    final mods = await ref.read(modRepositoryProvider).getAllMods();
+    for (final mod in mods) {
+      if (!mod.isApplied) {
+        continue;
+      }
+
+      final targetFile = mod.targetFile.trim();
+      if (targetFile.isEmpty) {
+        continue;
+      }
+
+      trackedPaths.add('$gameDataRoot/$targetFile');
+    }
+
+    return trackedPaths;
   }
 }

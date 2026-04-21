@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter test *)",
+      "Bash(xargs grep *)",
+      "mcp__dart__list_running_apps",
+      "mcp__dart__list_devices",
+      "mcp__dart__launch_app",
+      "mcp__dart__connect_dart_tooling_daemon",
+      "mcp__dart__get_app_logs",
+      "mcp__dart__hot_reload",
+      "mcp__dart__hot_restart",
+      "mcp__dart__get_runtime_errors",
+      "mcp__dart__stop_app",
+      "Bash(python3 *)",
+      "Bash(sed 's/\"//g')",
+      "Bash(awk '/^  \"familyKeys\":/,/^  \"chunkGroupIds\":/' /d/Programming/bamm/assets/data/global_android_asset_index.json)",
+      "Bash(xargs ls *)",
+      "WebFetch(domain:schaledb.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
+  }
+}
